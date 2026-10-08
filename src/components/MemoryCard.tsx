@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import type { Memory } from '../types';
+import type { Memory, Timeline } from '../types';
 import { formatShort, parseDay } from '../lib/date';
 import { MOODS } from '../lib/moods';
 import { useData } from '../lib/data';
@@ -9,11 +9,15 @@ import { PhotoMosaic } from './PhotoMosaic';
 export function MemoryCard({
   memory,
   side,
+  planned,
+  journey,
   onOpen,
   onPhoto,
 }: {
   memory: Memory;
   side: 'left' | 'right';
+  planned?: boolean;
+  journey?: Timeline;
   onOpen: () => void;
   onPhoto: (index: number) => void;
 }) {
@@ -23,7 +27,7 @@ export function MemoryCard({
 
   return (
     <motion.article
-      className={`tl-item tl-item--${side}`}
+      className={`tl-item tl-item--${side} ${planned ? 'is-planned' : ''}`}
       initial={{ opacity: 0, y: 60 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
@@ -64,8 +68,13 @@ export function MemoryCard({
             <span className="chip chip--mood">
               {mood.emoji} {mood.label}
             </span>
-            <span className="card__date">{formatShort(memory.date)}</span>
+            <span className="card__date">{planned ? 'Dự kiến · ' : ''}{formatShort(memory.date)}</span>
           </div>
+          {journey && (
+            <span className="card__journey">
+              {journey.emoji} {journey.title}
+            </span>
+          )}
           <h3 className="card__title">{memory.title || 'Một ngày đáng nhớ'}</h3>
           {memory.location && (
             <p className="card__loc">

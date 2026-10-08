@@ -1,13 +1,14 @@
 import { motion, useMotionValueEvent, useScroll } from 'framer-motion';
 import { useState } from 'react';
 import { useData } from '../lib/data';
-import { IconImage, IconNote, IconPlus, IconSettings, IconTimeline } from './Icons';
+import { IconCamera, IconHeart, IconMap, IconNote, IconPlus, IconTimeline } from './Icons';
 
-export type View = 'timeline' | 'gallery' | 'notes';
+export type View = 'story' | 'journeys' | 'moments' | 'notes';
 
 const TABS: { key: View; label: string; Icon: typeof IconTimeline }[] = [
-  { key: 'timeline', label: 'Kỉ niệm', Icon: IconTimeline },
-  { key: 'gallery', label: 'Kho ảnh', Icon: IconImage },
+  { key: 'story', label: 'Kỉ niệm', Icon: IconTimeline },
+  { key: 'journeys', label: 'Hành trình', Icon: IconMap },
+  { key: 'moments', label: 'Khoảnh khắc', Icon: IconHeart },
   { key: 'notes', label: 'Lời nhắn', Icon: IconNote },
 ];
 
@@ -15,19 +16,31 @@ export function Nav({
   view,
   onView,
   onCreate,
+  onCamera,
   onSettings,
 }: {
   view: View;
   onView: (v: View) => void;
   onCreate: () => void;
+  onCamera: () => void;
   onSettings: () => void;
 }) {
-  const { settings } = useData();
+  const { doc, profile, sync, me } = useData();
   const { scrollY } = useScroll();
   const [solid, setSolid] = useState(false);
   useMotionValueEvent(scrollY, 'change', (y) => setSolid(y > 40));
 
+  const { settings } = doc;
   const initials = `${settings.myName.charAt(0)}&${settings.partnerName.charAt(0)}`;
+  // khoảnh khắc mới từ người kia trong 24 giờ qua
+  const fresh = doc.moments.some((m) => m.by.email !== me.email && Date.now() - m.createdAt < 86_400_000);
+
+  const avatar = (
+    <button className={`me-btn sync-${sync}`} onClick={onSettings} aria-label="Tài khoản và cài đặt" title={sync === 'saving' ? 'Đang lưu…' : sync === 'error' ? 'Chưa lưu được' : 'Đã đồng bộ'}>
+      {profile.picture ? <img src={profile.picture} alt="" referrerPolicy="no-referrer" /> : <span>{profile.name.charAt(0)}</span>}
+      <i className="me-btn__dot" />
+    </button>
+  );
 
   return (
     <>
@@ -42,26 +55,22 @@ export function Nav({
         </button>
         <div className="tabs" role="tablist">
           {TABS.map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              role="tab"
-              aria-selected={view === key}
-              className={`tab ${view === key ? 'is-on' : ''}`}
-              onClick={() => onView(key)}
-            >
+            <button key={key} role="tab" aria-selected={view === key} className={`tab ${view === key ? 'is-on' : ''}`} onClick={() => onView(key)}>
               {view === key && <motion.span layoutId="tab-pill" className="tab__pill" transition={{ type: 'spring', damping: 30, stiffness: 320 }} />}
               <Icon size={17} />
               <span>{label}</span>
+              {key === 'moments' && fresh && view !== 'moments' && <i className="tab__dot" />}
             </button>
           ))}
         </div>
         <div className="topbar__right">
-          <button className="btn btn--gold btn--sm topbar__add" onClick={onCreate}>
+          <button className="icon-btn topbar__desk" onClick={onCamera} aria-label="Chụp khoảnh khắc" title="Chụp khoảnh khắc">
+            <IconCamera />
+          </button>
+          <button className="btn btn--gold btn--sm topbar__desk" onClick={onCreate}>
             <IconPlus size={16} /> Kỉ niệm mới
           </button>
-          <button className="icon-btn" onClick={onSettings} aria-label="Cài đặt">
-            <IconSettings />
-          </button>
+          {avatar}
         </div>
       </motion.nav>
 
@@ -73,19 +82,16 @@ export function Nav({
             <span>{label}</span>
           </button>
         ))}
-        <button className="bottombar__fab" onClick={onCreate} aria-label="Kỉ niệm mới">
-          <IconPlus size={26} />
+        <button className="bottombar__fab" onClick={onCamera} aria-label="Chụp khoảnh khắc">
+          <IconCamera size={26} />
         </button>
         {TABS.slice(2).map(({ key, label, Icon }) => (
           <button key={key} className={`bottombar__tab ${view === key ? 'is-on' : ''}`} onClick={() => onView(key)}>
             <Icon size={22} />
             <span>{label}</span>
+            {key === 'moments' && fresh && view !== 'moments' && <i className="tab__dot" />}
           </button>
         ))}
-        <button className="bottombar__tab" onClick={onSettings}>
-          <IconSettings size={22} />
-          <span>Cài đặt</span>
-        </button>
       </nav>
     </>
   );

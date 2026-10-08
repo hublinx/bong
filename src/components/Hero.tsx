@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useData } from '../lib/data';
 import { daysBetween, formatShort, nextAnniversary, nextHundred, parseDay, startOfToday, toDayString, ymdBetween } from '../lib/date';
 import { IconCalendar, IconChevron } from './Icons';
+import { LatestMoment } from './Moments';
 
 function CountUp({ to }: { to: number }) {
   const mv = useMotionValue(0);
@@ -14,8 +15,9 @@ function CountUp({ to }: { to: number }) {
   return <>{v.toLocaleString('vi-VN')}</>;
 }
 
-export function Hero({ onSetup, onExplore }: { onSetup: () => void; onExplore: () => void }) {
-  const { settings, memories } = useData();
+export function Hero({ onSetup, onExplore, onMoments }: { onSetup: () => void; onExplore: () => void; onMoments: () => void }) {
+  const { doc } = useData();
+  const { settings, memories } = doc;
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 600], [0, 140]);
   const opacity = useTransform(scrollY, [0, 500], [1, 0]);
@@ -130,7 +132,9 @@ export function Hero({ onSetup, onExplore }: { onSetup: () => void; onExplore: (
                 <div className="milestone">
                   <span className="milestone__k">Đã lưu giữ</span>
                   <span className="milestone__v">{memories.length} kỉ niệm</span>
-                  <span className="milestone__d">{photoCount} tấm ảnh</span>
+                  <span className="milestone__d">
+                    {photoCount} tấm ảnh · {doc.moments.length} khoảnh khắc
+                  </span>
                 </div>
               </div>
             </>
@@ -141,6 +145,7 @@ export function Hero({ onSetup, onExplore }: { onSetup: () => void; onExplore: (
             </button>
           )}
         </motion.div>
+        <LatestMoment onOpen={onMoments} />
       </motion.div>
 
       <motion.button

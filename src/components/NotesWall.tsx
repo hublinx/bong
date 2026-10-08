@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
-import type { Note, NoteColor } from '../types';
-import { useData } from '../lib/data';
+import type { Author, NoteColor } from '../types';
+import { useAuthorName, useData } from '../lib/data';
 import { uid } from '../lib/id';
 import { relativeTime } from '../lib/date';
 import { IconPinNote, IconTrash } from './Icons';
@@ -17,10 +17,17 @@ function tilt(id: string) {
 }
 
 export function NotesWall() {
-  const { notes, saveNote, deleteNote, settings } = useData();
+  const { doc, saveNote, deleteNote, me } = useData();
+  const { notes, settings } = doc;
+  const nameOf = useAuthorName();
   const { confirm } = useUI();
   const [text, setText] = useState('');
-  const [author, setAuthor] = useState<Note['author']>('me');
+  // chế độ dùng thử: một máy dùng chung nên cho chọn ai viết
+  const local = me.email === 'local';
+  const [localWho, setLocalWho] = useState<'me' | 'partner'>('me');
+  const author: Author = local ? { email: 'local', name: localWho === 'me' ? settings.myName : settings.partnerName } : me;
+  const partner = Object.values(doc.members).find((m) => m.email !== me.email);
+  const recipient = local ? (localWho === 'me' ? settings.partnerName : settings.myName) : partner?.name ?? settings.partnerName;
   const [color, setColor] = useState<NoteColor>('cream');
 
   const sorted = useMemo(
@@ -31,11 +38,9 @@ export function NotesWall() {
   const add = async () => {
     const t = text.trim();
     if (!t) return;
-    await saveNote({ id: uid(), text: t, author, color, pinned: false, createdAt: Date.now() });
+    await saveNote({ id: uid(), text: t, by: author, color, pinned: false, createdAt: Date.now() });
     setText('');
   };
-
-  const nameOf = (a: Note['author']) => (a === 'me' ? settings.myName : settings.partnerName);
 
   return (
     <section className="notes-section">
@@ -52,18 +57,20 @@ export function NotesWall() {
           onKeyDown={(e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) add();
           }}
-          placeholder={`Viết gì đó cho ${author === 'me' ? settings.partnerName : settings.myName}…`}
+          placeholder={`Viết gì đó cho ${recipient}…`}
           rows={3}
           maxLength={600}
         />
         <div className="composer__bar">
-          <div className="composer__who">
-            {(['me', 'partner'] as const).map((a) => (
-              <button key={a} className={`chip chip--filter ${author === a ? 'is-on' : ''}`} onClick={() => setAuthor(a)}>
-                {nameOf(a)} viết
-              </button>
-            ))}
-          </div>
+          {local && (
+            <div className="composer__who">
+              {(['me', 'partner'] as const).map((a) => (
+                <button key={a} className={`chip chip--filter ${localWho === a ? 'is-on' : ''}`} onClick={() => setLocalWho(a)}>
+                  {a === 'me' ? settings.myName : settings.partnerName} viết
+                </button>
+              ))}
+            </div>
+          )}
           <div className="composer__colors">
             {COLORS.map((c) => (
               <button
@@ -97,7 +104,7 @@ export function NotesWall() {
               <span className="note__tape" aria-hidden />
               <p className="note__text">{n.text}</p>
               <div className="note__foot">
-                <span className="note__author">— {nameOf(n.author)}</span>
+                <span className="note__author">— {n.by.email === me.email && !local ? 'Bạn' : nameOf(n.by)}</span>
                 <span className="note__time">{relativeTime(n.createdAt)}</span>
               </div>
               <div className="note__tools">

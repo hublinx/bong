@@ -104,3 +104,55 @@ export const IconPinNote = (p: P) => (
     <path d="M12 14v6" />
   </svg>
 );
+export const IconCamera = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.2-2h5l1.2 2h1.8A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+);
+export const IconFlip = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5" />
+  </svg>
+);
+export const IconSend = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z" />
+  </svg>
+);
+export const IconBolt = ({ filled, ...p }: P & { filled?: boolean }) => (
+  <svg {...base(p)} fill={filled ? 'currentColor' : 'none'}>
+    <path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" />
+  </svg>
+);
+export const IconMap = (p: P) => (
+  <svg {...base(p)}>
+    <path d="m9 4-5 2v14l5-2 6 2 5-2V4l-5 2z" />
+    <path d="M9 4v14M15 6v14" />
+  </svg>
+);
+export const IconDrive = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M8.5 3.5h7l6 10.5-3.5 6h-12L2.5 14z" />
+    <path d="m8.5 3.5 6 10.5h7M6 20l6-10.5M2.5 14h12" />
+  </svg>
+);
+export const IconLogout = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10" />
+  </svg>
+);
+export const IconCheck = (p: P) => (
+  <svg {...base(p)}><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
+);
+export const IconUsers = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14a6.5 6.5 0 0 1 3 6" />
+  </svg>
+);
+export const IconCloud = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M7 18.5a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9a4.75 4.75 0 0 1-.5 9.5z" />
+  </svg>
+);

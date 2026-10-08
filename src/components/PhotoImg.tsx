@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { usePhoto, type PhotoSize } from '../lib/photos';
+import type { PhotoSize } from '../lib/backend/types';
+import { usePhoto } from '../lib/photos';
 
 export function PhotoImg({
   id,
@@ -14,11 +15,11 @@ export function PhotoImg({
   alt?: string;
   onClick?: () => void;
 }) {
-  const { url } = usePhoto(id, size);
-  const [loaded, setLoaded] = useState(false);
+  const { url, onError } = usePhoto(id, size);
+  const [loaded, setLoaded] = useState<string | null>(null);
   return (
-    <div className={`photo ${loaded ? 'is-loaded' : ''} ${onClick ? 'is-clickable' : ''} ${className}`} onClick={onClick}>
-      {url && <img src={url} alt={alt} draggable={false} onLoad={() => setLoaded(true)} />}
+    <div className={`photo ${loaded === url && url ? 'is-loaded' : ''} ${onClick ? 'is-clickable' : ''} ${className}`} onClick={onClick}>
+      {url && <img src={url} alt={alt} draggable={false} referrerPolicy="no-referrer" onLoad={() => setLoaded(url)} onError={onError} />}
     </div>
   );
 }

@@ -1,16 +1,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
-import { DataProvider } from './lib/data';
+import Root from './App';
+import { AuthProvider } from './lib/auth';
 import { UIProvider } from './components/UI';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <UIProvider>
-      <DataProvider>
-        <App />
-      </DataProvider>
+      <AuthProvider>
+        <Root />
+      </AuthProvider>
     </UIProvider>
   </StrictMode>,
 );

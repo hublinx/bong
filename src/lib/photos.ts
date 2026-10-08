@@ -1,63 +1,55 @@
-import { useEffect, useState } from 'react';
-import { store } from './db';
+import { useCallback, useEffect, useState } from 'react';
+import type { Backend, PhotoSize } from './backend/types';
+import { useData } from './data';
 
-export type PhotoSize = 'thumb' | 'full';
+// Bộ nhớ đệm URL theo backend để không phải hỏi lại mỗi lần render.
+const caches = new WeakMap<Backend, Map<string, string>>();
 
-interface Entry {
-  thumb?: string;
-  full?: string;
-  ratio?: number;
+function cacheOf(b: Backend) {
+  let c = caches.get(b);
+  if (!c) caches.set(b, (c = new Map()));
+  return c;
 }
 
-// Cache object URL theo id để không tạo lại mỗi lần render.
-const cache = new Map<string, Entry>();
-const pending = new Map<string, Promise<Entry | undefined>>();
-
-async function load(id: string): Promise<Entry | undefined> {
-  const hit = cache.get(id);
-  if (hit?.thumb && hit.full) return hit;
-  let p = pending.get(id);
-  if (!p) {
-    p = store.getPhoto(id).then((photo) => {
-      pending.delete(id);
-      if (!photo) return undefined;
-      const e: Entry = {
-        thumb: URL.createObjectURL(photo.thumb),
-        full: URL.createObjectURL(photo.blob),
-        ratio: photo.width / photo.height,
-      };
-      cache.set(id, e);
-      return e;
-    });
-    pending.set(id, p);
-  }
-  return p;
-}
-
-export function forgetPhotos(ids: string[]) {
-  for (const id of ids) {
-    const e = cache.get(id);
-    if (e?.thumb) URL.revokeObjectURL(e.thumb);
-    if (e?.full) URL.revokeObjectURL(e.full);
-    cache.delete(id);
-  }
-}
-
-/** Trả về object URL của ảnh (thumbnail hoặc bản đầy đủ) và tỉ lệ khung hình. */
+/** Trả về URL ảnh và hàm báo lỗi (để thử nguồn dự phòng). */
 export function usePhoto(id: string | undefined, size: PhotoSize = 'thumb') {
-  const [entry, setEntry] = useState<Entry | undefined>(() => (id ? cache.get(id) : undefined));
+  const { backend, doc } = useData();
+  const key = `${size}:${id}`;
+  const cache = cacheOf(backend);
+  const [url, setUrl] = useState<string | undefined>(() => (id ? cache.get(key) : undefined));
+  const [failed, setFailed] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     let alive = true;
-    const hit = cache.get(id);
-    if (hit) setEntry(hit);
-    else {
-      setEntry(undefined);
-      load(id).then((e) => alive && setEntry(e));
+    setFailed(false);
+    const hit = cache.get(key);
+    if (hit) {
+      setUrl(hit);
+      return;
     }
+    setUrl(undefined);
+    backend.photoUrl(id, size).then((u) => {
+      if (!alive || !u) return;
+      cache.set(key, u);
+      setUrl(u);
+    });
     return () => {
       alive = false;
     };
-  }, [id]);
-  return { url: entry?.[size], ratio: entry?.ratio };
+  }, [id, key, backend, size, cache]);
+
+  const onError = useCallback(() => {
+    if (!id || failed) return;
+    setFailed(true);
+    cache.delete(key);
+    backend.photoUrl(id, size, true).then((u) => {
+      if (!u) return;
+      cache.set(key, u);
+      setUrl(u);
+    });
+  }, [id, failed, key, backend, size, cache]);
+
+  const meta = id ? doc.photos[id] : undefined;
+  return { url, onError, ratio: meta ? meta.width / meta.height : undefined };
 }

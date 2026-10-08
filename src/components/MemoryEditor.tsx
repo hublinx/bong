@@ -1,21 +1,21 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
-import type { Memory, MoodKey } from '../types';
+import { MAIN_TIMELINE, type Memory, type MoodKey } from '../types';
 import { useData } from '../lib/data';
-import { store } from '../lib/db';
 import { uid } from '../lib/id';
 import { processImage } from '../lib/image';
-import { forgetPhotos } from '../lib/photos';
 import { MOODS, MOOD_KEYS } from '../lib/moods';
 import { today } from '../lib/date';
-import { IconClose, IconImage, IconSparkle } from './Icons';
+import { IconClose, IconDrive, IconImage, IconSparkle } from './Icons';
+import { LibraryPicker } from './LibraryPicker';
 import { PhotoImg } from './PhotoImg';
 import { Modal, useUI } from './UI';
 
-function blank(): Memory {
+function blank(draft?: Partial<Memory>): Memory {
   const now = Date.now();
   return {
     id: uid(),
+    timelineId: MAIN_TIMELINE,
     title: '',
     date: today(),
     location: '',
@@ -26,22 +26,27 @@ function blank(): Memory {
     favorite: false,
     createdAt: now,
     updatedAt: now,
+    ...draft,
   };
 }
 
 export function MemoryEditor({
   open,
   initial,
+  draft,
   onClose,
   onSaved,
 }: {
   open: boolean;
   initial: Memory | null;
+  /** Giá trị gợi ý cho kỉ niệm mới (vd. từ một khoảnh khắc, một hành trình) */
+  draft?: Partial<Memory>;
   onClose: () => void;
   onSaved?: (m: Memory) => void;
 }) {
-  const { saveMemory } = useData();
+  const { saveMemory, upload, backend, doc, me } = useData();
   const { toast } = useUI();
+  const [picking, setPicking] = useState(false);
   const [m, setM] = useState<Memory>(blank);
   const [tagDraft, setTagDraft] = useState('');
   const [busy, setBusy] = useState(0);
@@ -52,7 +57,7 @@ export function MemoryEditor({
 
   useEffect(() => {
     if (!open) return;
-    setM(initial ? { ...initial, tags: [...initial.tags], photoIds: [...initial.photoIds] } : blank());
+    setM(initial ? { ...initial, tags: [...initial.tags], photoIds: [...initial.photoIds] } : blank({ by: me, ...draft }));
     setTagDraft('');
     added.current = [];
   }, [open, initial]);
@@ -65,12 +70,11 @@ export function MemoryEditor({
     setBusy((b) => b + list.length);
     for (const f of list) {
       try {
-        const photo = await processImage(f);
-        await store.putPhoto(photo);
-        added.current.push(photo.id);
-        setM((x) => ({ ...x, photoIds: [...x.photoIds, photo.id] }));
-      } catch {
-        toast(`Không đọc được ảnh “${f.name}”`);
+        const meta = await upload(await processImage(f), 'memories');
+        added.current.push(meta.id);
+        setM((x) => ({ ...x, photoIds: [...x.photoIds, meta.id] }));
+      } catch (e) {
+        toast(`Chưa thêm được ảnh “${f.name}”${e instanceof Error ? `: ${e.message}` : ''}`);
       } finally {
         setBusy((b) => b - 1);
       }
@@ -94,8 +98,7 @@ export function MemoryEditor({
     const orphan = added.current;
     added.current = [];
     onClose();
-    await store.deletePhotos(orphan);
-    forgetPhotos(orphan);
+    if (orphan.length) await backend.deletePhotos(orphan).catch(() => {});
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -113,9 +116,12 @@ export function MemoryEditor({
       tags: [...new Set([...m.tags, ...pendingTag])],
       updatedAt: Date.now(),
     };
+    // chỉ xoá hẳn những ảnh vừa tải lên rồi bỏ ra; ảnh cũ sẽ được dọn nếu không còn ai dùng
     const removed = [...(initial?.photoIds ?? []), ...added.current].filter((id) => !final.photoIds.includes(id));
     try {
       await saveMemory(final, removed);
+      const discarded = added.current.filter((id) => !final.photoIds.includes(id));
+      if (backend.kind === 'drive' && discarded.length) backend.deletePhotos(discarded).catch(() => {});
       added.current = [];
       toast(initial ? 'Đã cập nhật kỉ niệm ✨' : 'Đã cất giữ một kỉ niệm mới ✨');
       onClose();
@@ -187,13 +193,22 @@ export function MemoryEditor({
               ))}
             </div>
           )}
-          <button type="button" className="dropzone__btn" onClick={() => fileRef.current?.click()}>
-            {busy > 0 && !m.photoIds.length ? <span className="spinner" /> : <IconImage size={26} />}
-            <span>
-              <b>Thêm ảnh</b> — kéo thả hoặc bấm để chọn
-            </span>
-            <small>Ảnh được nén gọn và chỉ lưu trên thiết bị này</small>
-          </button>
+          <div className="dropzone__actions">
+            <button type="button" className="dropzone__btn" onClick={() => fileRef.current?.click()}>
+              {busy > 0 && !m.photoIds.length ? <span className="spinner" /> : <IconImage size={26} />}
+              <span>
+                <b>Tải ảnh lên</b> — kéo thả hoặc bấm để chọn
+              </span>
+              <small>{backend.kind === 'drive' ? 'Ảnh được nén gọn rồi lưu vào Google Drive' : 'Ảnh được nén gọn, lưu trên thiết bị này'}</small>
+            </button>
+            <button type="button" className="dropzone__btn" onClick={() => setPicking(true)}>
+              <IconDrive size={26} />
+              <span>
+                <b>Chọn từ kho ảnh</b>
+              </span>
+              <small>{backend.kind === 'drive' ? 'Ảnh đã có sẵn trong thư mục Drive' : 'Ảnh đã có trong app'}</small>
+            </button>
+          </div>
           <input
             ref={fileRef}
             type="file"
@@ -206,6 +221,22 @@ export function MemoryEditor({
             }}
           />
         </div>
+
+        {doc.timelines.length > 0 && (
+          <div className="field">
+            <span className="field__label">Thuộc về</span>
+            <div className="journey-pick">
+              <button type="button" className={`chip chip--filter ${m.timelineId === MAIN_TIMELINE ? 'is-on' : ''}`} onClick={() => set('timelineId', MAIN_TIMELINE)}>
+                💞 Câu chuyện chung
+              </button>
+              {doc.timelines.map((t) => (
+                <button type="button" key={t.id} className={`chip chip--filter ${m.timelineId === t.id ? 'is-on' : ''}`} onClick={() => set('timelineId', t.id)}>
+                  {t.emoji} {t.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="editor__row">
           <label className="field">
@@ -282,6 +313,12 @@ export function MemoryEditor({
           </button>
         </div>
       </form>
+      <LibraryPicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        exclude={m.photoIds}
+        onPick={(ids) => setM((x) => ({ ...x, photoIds: [...x.photoIds, ...ids.filter((i) => !x.photoIds.includes(i))] }))}
+      />
     </Modal>
   );
 }

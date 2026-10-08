@@ -1,81 +1,71 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Settings } from '../types';
+import type { SpaceMember } from '../lib/backend/types';
+import { useAuth } from '../lib/auth';
 import { useData } from '../lib/data';
-import { exportBackup, importBackup } from '../lib/backup';
-import { store } from '../lib/db';
-import { IconDownload, IconSettings, IconTrash, IconUpload } from './Icons';
+import { IconCloud, IconDrive, IconLogout, IconSettings, IconUsers } from './Icons';
 import { Modal, useUI } from './UI';
 
-function fmtBytes(n: number) {
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
-  if (n < 1024 ** 3) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  return `${(n / 1024 ** 3).toFixed(2)} GB`;
-}
-
 export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { settings, saveSettings, reload } = useData();
+  const { doc, saveSettings, backend, profile } = useData();
+  const { signOut } = useAuth();
   const { toast, confirm } = useUI();
-  const [s, setS] = useState<Settings>(settings);
-  const [usage, setUsage] = useState<{ used: number; quota: number } | null>(null);
-  const [working, setWorking] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [s, setS] = useState<Settings>(doc.settings);
+  const [members, setMembers] = useState<SpaceMember[] | null>(null);
+  const [email, setEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setS(settings);
-    navigator.storage?.estimate?.().then((e) => setUsage({ used: e.usage ?? 0, quota: e.quota ?? 0 })).catch(() => {});
-  }, [open, settings]);
+    setS(doc.settings);
+    if (backend.members) backend.members().then(setMembers).catch(() => setMembers(null));
+  }, [open]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveSettings({
-      ...s,
-      myName: s.myName.trim() || 'Tôi',
-      partnerName: s.partnerName.trim() || 'Bông',
-      tagline: s.tagline.trim(),
-    });
-    toast('Đã lưu cài đặt');
-    onClose();
-  };
-
-  const doExport = async () => {
-    setWorking(true);
     try {
-      await exportBackup();
-      toast('Đã tạo bản sao lưu');
-    } catch {
-      toast('Không thể xuất bản sao lưu');
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const doImport = async (f: File) => {
-    setWorking(true);
-    try {
-      const r = await importBackup(f);
-      await reload();
-      toast(`Đã khôi phục ${r.memories} kỉ niệm, ${r.photos} ảnh, ${r.notes} lời nhắn`);
+      await saveSettings({
+        ...s,
+        myName: s.myName.trim() || 'Tôi',
+        partnerName: s.partnerName.trim() || 'Bông',
+        tagline: s.tagline.trim(),
+      });
+      toast('Đã lưu cài đặt');
       onClose();
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'File sao lưu không hợp lệ');
-    } finally {
-      setWorking(false);
+    } catch {
+      /* đã báo lỗi */
     }
   };
 
-  const wipe = async () => {
+  const invite = async () => {
+    const em = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em) || !backend.invite) {
+      toast('Email chưa đúng');
+      return;
+    }
+    setInviting(true);
+    try {
+      await backend.invite(em, `${profile.givenName} mời bạn vào cuốn nhật kí "Tôi & Bông" ♡ Mở app và đăng nhập bằng email này nhé.`);
+      toast(`Đã mời ${em} ✨`);
+      setEmail('');
+      backend.members?.().then(setMembers).catch(() => {});
+    } catch (e) {
+      toast(e instanceof Error ? `Chưa mời được: ${e.message}` : 'Chưa mời được');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const logout = async () => {
     const ok = await confirm({
-      title: 'Xoá toàn bộ dữ liệu?',
-      message: 'Tất cả kỉ niệm, ảnh và lời nhắn trên thiết bị này sẽ biến mất. Hãy chắc rằng bạn đã sao lưu.',
-      confirmText: 'Xoá hết',
-      danger: true,
+      title: backend.kind === 'drive' ? 'Đăng xuất?' : 'Thoát chế độ dùng thử?',
+      message: backend.kind === 'drive' ? 'Dữ liệu vẫn an toàn trên Google Drive.' : 'Dữ liệu dùng thử vẫn còn trên máy này cho lần sau.',
+      confirmText: 'Đăng xuất',
     });
-    if (!ok) return;
-    await store.clearAll();
-    await reload();
-    toast('Đã xoá toàn bộ dữ liệu');
-    onClose();
+    if (ok) {
+      onClose();
+      signOut();
+    }
   };
 
   return (
@@ -88,11 +78,11 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
 
         <div className="editor__row">
           <label className="field">
-            <span className="field__label">Tên của bạn</span>
+            <span className="field__label">Tên người thứ nhất</span>
             <input value={s.myName} onChange={(e) => setS({ ...s, myName: e.target.value })} maxLength={30} />
           </label>
           <label className="field">
-            <span className="field__label">Tên người ấy</span>
+            <span className="field__label">Tên người thứ hai</span>
             <input value={s.partnerName} onChange={(e) => setS({ ...s, partnerName: e.target.value })} maxLength={30} />
           </label>
         </div>
@@ -112,47 +102,70 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
         </div>
 
         <div className="settings__block">
-          <h3>Sao lưu &amp; khôi phục</h3>
-          <p>
-            Dữ liệu được cất giữ riêng tư ngay trong trình duyệt của thiết bị này. Thỉnh thoảng hãy tải bản sao lưu về để
-            giữ an toàn, hoặc để chuyển sang điện thoại / máy tính khác.
-          </p>
-          {usage && usage.quota > 0 && (
-            <div className="usage">
-              <div className="usage__bar">
-                <span style={{ width: `${Math.max(1, Math.min(100, (usage.used / usage.quota) * 100))}%` }} />
-              </div>
-              <small>
-                Đang dùng {fmtBytes(usage.used)} / {fmtBytes(usage.quota)}
-              </small>
-            </div>
-          )}
+          <h3>
+            <IconCloud size={20} /> Nơi lưu trữ
+          </h3>
+          <div className="account">
+            {profile.picture ? <img src={profile.picture} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{profile.name.charAt(0)}</span>}
+            <span>
+              <b>{backend.kind === 'drive' ? profile.name : 'Chế độ dùng thử'}</b>
+              <small>{backend.kind === 'drive' ? profile.email : 'Dữ liệu chỉ nằm trên trình duyệt này'}</small>
+            </span>
+          </div>
+          <p>{backend.label}</p>
           <div className="settings__btns">
-            <button type="button" className="btn btn--ghost" onClick={doExport} disabled={working}>
-              <IconDownload size={16} /> Tải bản sao lưu
+            {backend.folderUrl && (
+              <a className="btn btn--ghost" href={backend.folderUrl} target="_blank" rel="noreferrer">
+                <IconDrive size={16} /> Mở thư mục trên Drive
+              </a>
+            )}
+            <button type="button" className="btn btn--ghost" onClick={logout}>
+              <IconLogout size={16} /> {backend.kind === 'drive' ? 'Đăng xuất' : 'Đăng nhập Google'}
             </button>
-            <button type="button" className="btn btn--ghost" onClick={() => fileRef.current?.click()} disabled={working}>
-              <IconUpload size={16} /> Khôi phục từ file
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/json,.json"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) doImport(f);
-                e.target.value = '';
-              }}
-            />
           </div>
         </div>
 
-        <div className="settings__block settings__block--danger">
-          <button type="button" className="btn btn--ghost btn--danger-text" onClick={wipe}>
-            <IconTrash size={16} /> Xoá toàn bộ dữ liệu
-          </button>
-        </div>
+        {backend.invite && (
+          <div className="settings__block">
+            <h3>
+              <IconUsers size={20} /> Mời người ấy
+            </h3>
+            <p>
+              Nhập Gmail của người ấy: thư mục trên Drive sẽ được chia sẻ, và người ấy đăng nhập app bằng email đó là thấy chung mọi kỉ niệm.
+            </p>
+            {members && members.length > 0 && (
+              <ul className="members">
+                {members.map((m) => (
+                  <li key={m.email}>
+                    {m.picture ? <img src={m.picture} alt="" referrerPolicy="no-referrer" /> : <span className="avatar">{m.name.charAt(0)}</span>}
+                    <span>
+                      <b>{m.name}</b>
+                      <small>{m.email}</small>
+                    </span>
+                    <em>{m.role === 'owner' ? 'Chủ sở hữu' : 'Cùng viết'}</em>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="invite">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    invite();
+                  }
+                }}
+                placeholder="bong@gmail.com"
+              />
+              <button type="button" className="btn btn--gold btn--sm" onClick={invite} disabled={inviting || !email.trim()}>
+                {inviting ? 'Đang mời…' : 'Gửi lời mời'}
+              </button>
+            </div>
+          </div>
+        )}
       </form>
     </Modal>
   );

@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import type { Memory } from '../types';
-import { useData } from '../lib/data';
+import { MAIN_TIMELINE } from '../types';
+import { useAuthorName, useData } from '../lib/data';
 import { daysBetween, formatLong, parseDay, startOfToday } from '../lib/date';
 import { MOODS } from '../lib/moods';
 import { IconChevron, IconEdit, IconHeart, IconPin, IconTrash } from './Icons';
@@ -32,7 +33,9 @@ export function MemoryDetail({
   onEdit: (m: Memory) => void;
   onPhoto: (ids: string[], index: number) => void;
 }) {
-  const { deleteMemory, toggleFavorite, memories } = useData();
+  const { deleteMemory, toggleFavorite, doc, backend } = useData();
+  const memories = doc.memories;
+  const nameOf = useAuthorName();
   const { confirm, toast } = useUI();
   const [idx, setIdx] = useState(0);
   // luôn lấy bản mới nhất (vd. sau khi bấm yêu thích)
@@ -44,7 +47,10 @@ export function MemoryDetail({
     if (!m) return;
     const ok = await confirm({
       title: 'Xoá kỉ niệm này?',
-      message: `“${m.title}” cùng ${m.photoIds.length} ảnh sẽ bị xoá vĩnh viễn khỏi thiết bị.`,
+      message:
+        backend.kind === 'drive'
+          ? `“${m.title}” sẽ bị xoá khỏi dòng thời gian. Ảnh vẫn được giữ trong kho ảnh trên Google Drive.`
+          : `“${m.title}” cùng ${m.photoIds.length} ảnh sẽ bị xoá vĩnh viễn khỏi thiết bị.`,
       confirmText: 'Xoá',
       danger: true,
     });
@@ -101,6 +107,10 @@ export function MemoryDetail({
               </span>
               <span className="detail__ago">{ago(m.date)}</span>
             </div>
+            {m.timelineId !== MAIN_TIMELINE && (() => {
+              const j = doc.timelines.find((t) => t.id === m.timelineId);
+              return j ? <span className="card__journey detail__journey">{j.emoji} {j.title}</span> : null;
+            })()}
             <h2 className="detail__title">{m.title}</h2>
             <p className="detail__date">{formatLong(m.date)}</p>
             {m.location && (
@@ -119,6 +129,7 @@ export function MemoryDetail({
                 ))}
               </div>
             )}
+            {m.by && m.by.email !== 'local' && <p className="detail__by">— {nameOf(m.by)} đã viết</p>}
             <div className="detail__actions">
               <button className={`btn btn--ghost ${m.favorite ? 'is-fav' : ''}`} onClick={() => toggleFavorite(m.id)}>
                 <IconHeart size={16} filled={m.favorite} /> {m.favorite ? 'Đã yêu thích' : 'Yêu thích'}
