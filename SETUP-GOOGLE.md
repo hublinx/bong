@@ -17,10 +17,10 @@ App lưu toàn bộ kỉ niệm, ảnh và khoảnh khắc vào **Google Drive c
 
 1. Vào **APIs & Services → OAuth consent screen** (giao diện mới gọi là **Google Auth Platform**).
 2. Chọn **External** rồi điền:
-   - App name: `Tôi & Bông`
+   - App name: `Hùng & Linh`
    - User support email và Developer contact: Gmail của bạn
 3. Ở mục **Data access / Scopes**, thêm scope `https://www.googleapis.com/auth/drive`.
-4. Ở mục **Audience / Test users**, bấm **Add users** và thêm **cả Gmail của bạn lẫn Gmail của Bông**.
+4. Ở mục **Audience / Test users**, bấm **Add users** và thêm **cả Gmail của bạn lẫn Gmail của Linh**.
    Để app ở trạng thái **Testing**, không cần gửi Google xét duyệt.
 
 > Khi đăng nhập lần đầu, Google sẽ báo *"Google hasn't verified this app"*.
@@ -54,15 +54,15 @@ Sau đó chạy lại workflow **Deploy to GitHub Pages** (hoặc push lên `mai
 
 > Client ID không phải bí mật, ai cũng thấy được trong code web. Chỉ những email nằm trong danh sách Test users mới đăng nhập được.
 
-## 6. Dùng chung với Bông
+## 6. Dùng chung với Linh
 
 1. Bạn đăng nhập trước và bấm **Tạo cuốn nhật kí mới trên Drive**.
-   App sẽ tạo thư mục **Tôi & Bông ♡** trong Drive của bạn, gồm:
+   App sẽ tạo thư mục **Hùng & Linh ♡** trong Drive của bạn, gồm:
    - `bong-data.json`: toàn bộ kỉ niệm, hành trình, lời nhắn (đừng xoá file này)
    - `Ảnh kỉ niệm/`: ảnh của các kỉ niệm. Bạn cũng có thể thả ảnh thẳng vào đây bằng app Google Drive, ảnh sẽ hiện trong **Kho ảnh**.
    - `Khoảnh khắc/`: ảnh chụp nhanh
-2. Vào **Cài đặt → Mời người ấy**, nhập Gmail của Bông rồi bấm **Gửi lời mời**.
-3. Bông mở app và đăng nhập bằng Gmail đó. App sẽ tự tìm thấy cuốn nhật kí được chia sẻ.
+2. Vào **Cài đặt → Mời người ấy**, nhập Gmail của Linh rồi bấm **Gửi lời mời**.
+3. Linh mở app và đăng nhập bằng Gmail đó. App sẽ tự tìm thấy cuốn nhật kí được chia sẻ.
 
 Hai người cùng xem và cùng viết. App tự đồng bộ khoảng 15 giây một lần, nên khoảnh khắc người kia vừa gửi sẽ hiện ra rất nhanh.
 

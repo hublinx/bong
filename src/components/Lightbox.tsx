@@ -74,7 +74,7 @@ export function Lightbox({
             </span>
             <div>
               {fullUrl && (
-                <a className="icon-btn" href={fullUrl} download={`bong-${i + 1}.jpg`} aria-label="Tải ảnh">
+                <a className="icon-btn" href={fullUrl} download={`hung-linh-${i + 1}.jpg`} aria-label="Tải ảnh">
                   <IconDownload />
                 </a>
               )}

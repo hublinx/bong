@@ -38,7 +38,7 @@ export function LoginScreen() {
         </motion.div>
         <p className="hero__eyebrow">Our little universe</p>
         <h1 className="login__title">
-          Tôi <span className="hero__amp">&amp;</span> Bông
+          Hùng <span className="hero__amp">&amp;</span> Linh
         </h1>
 
         <AnimatePresence mode="wait">

@@ -1,11 +1,11 @@
-# Tôi & Bông ♡
+# Hùng & Linh ♡
 
 Một cuốn nhật kí kỉ niệm nhỏ, sang trọng, dành riêng cho hai người. Mọi thứ được lưu trong Google Drive của chính bạn.
 
 ## Có gì bên trong
 
 - **Đăng nhập bằng Google**: hai tài khoản dùng chung một cuốn nhật kí, mời nhau bằng email.
-- **Lưu trữ trên Google Drive**: dữ liệu và ảnh nằm trong thư mục `Tôi & Bông ♡`. Ảnh bạn tự thả vào thư mục Drive cũng hiện trong Kho ảnh.
+- **Lưu trữ trên Google Drive**: dữ liệu và ảnh nằm trong thư mục `Hùng & Linh ♡`. Ảnh bạn tự thả vào thư mục Drive cũng hiện trong Kho ảnh.
 - **Bộ đếm ngày bên nhau**: số ngày, năm/tháng/ngày, đếm ngược tới ngày kỉ niệm tròn năm và mốc trăm ngày kế tiếp.
 - **Dòng thời gian kỉ niệm**: tiêu đề, ngày, nơi chốn, cảm xúc, câu chuyện, #thẻ, nhiều ảnh. Tìm kiếm không cần gõ dấu, lọc theo cảm xúc và mục yêu thích, có cả *Ngày này năm xưa*.
 - **Hành trình**: mở một dòng thời gian mới cho từng chuyến đi, kế hoạch, dự định hay câu chuyện riêng.
