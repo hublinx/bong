@@ -33,3 +33,40 @@ export function journeyStatus(t: Timeline, now = startOfToday()): JourneyStatus 
   }
   return { key: 'done', label: 'Đã đi qua', detail: `${-toEnd} ngày trước` };
 }
+
+/** Ngày về thực tế (không có thì coi như đi trong ngày). */
+export function endOf(t: Timeline) {
+  return t.endDate && t.endDate >= t.startDate ? t.endDate : t.startDate;
+}
+
+export function durationDays(t: Timeline) {
+  const s = parseDay(t.startDate);
+  const e = parseDay(endOf(t));
+  return s && e ? daysBetween(s, e) + 1 : 0;
+}
+
+export type SortDir = 'asc' | 'desc';
+
+/** Sắp theo ngày đi, rồi ngày về; hành trình chưa có ngày luôn nằm cuối. */
+export function sortJourneys(list: Timeline[], dir: SortDir = 'asc') {
+  const k = dir === 'asc' ? 1 : -1;
+  return [...list].sort((a, b) => {
+    if (!a.startDate || !b.startDate) {
+      if (a.startDate) return -1;
+      if (b.startDate) return 1;
+      return a.createdAt - b.createdAt;
+    }
+    return k * (a.startDate.localeCompare(b.startDate) || endOf(a).localeCompare(endOf(b)));
+  });
+}
+
+/** "3 tháng sau", "2 tuần sau"… cho khoảng trống giữa hai mốc */
+export function gapLabel(days: number) {
+  if (days < 1) return '';
+  if (days < 14) return `${days} ngày sau`;
+  if (days < 60) return `${Math.round(days / 7)} tuần sau`;
+  if (days < 365) return `${Math.round(days / 30)} tháng sau`;
+  const y = Math.floor(days / 365);
+  const m = Math.round((days % 365) / 30);
+  return m ? `${y} năm ${m} tháng sau` : `${y} năm sau`;
+}

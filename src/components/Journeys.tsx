@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { Memory, Timeline, TimelineKind } from '../types';
 import { useData } from '../lib/data';
 import { formatShort, today } from '../lib/date';
 import { uid } from '../lib/id';
 import { processImage } from '../lib/image';
-import { CHECKLIST_TEMPLATES, journeyStatus, KIND_KEYS, KINDS } from '../lib/journeys';
+import { CHECKLIST_TEMPLATES, durationDays, journeyStatus, KIND_KEYS, KINDS, sortJourneys, type SortDir } from '../lib/journeys';
+import { JourneyOverview } from './JourneyOverview';
 import { IconCheck, IconChevron, IconClose, IconDrive, IconEdit, IconImage, IconPin, IconPlus, IconSparkle, IconTrash } from './Icons';
 import { LibraryPicker } from './LibraryPicker';
 import { PhotoImg } from './PhotoImg';
@@ -30,19 +31,60 @@ function dateRange(t: Timeline) {
 
 /* ---------- Danh sách hành trình ---------- */
 
-export function Journeys({ onOpen, onCreate }: { onOpen: (t: Timeline) => void; onCreate: () => void }) {
+type JView = 'cards' | 'overview';
+
+function pref<T extends string>(key: string, fallback: T): T {
+  try {
+    return (localStorage.getItem(key) as T) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+function savePref(key: string, v: string) {
+  try {
+    localStorage.setItem(key, v);
+  } catch {
+    /* bỏ qua */
+  }
+}
+
+export function Journeys({
+  onOpen,
+  onCreate,
+  onOpenMemory,
+}: {
+  onOpen: (t: Timeline) => void;
+  onCreate: () => void;
+  onOpenMemory: (m: Memory) => void;
+}) {
   const { doc } = useData();
-  const order = { ongoing: 0, upcoming: 1, dream: 2, done: 3 } as const;
+  const [view, setView] = useState<JView>(() => pref('bong.jview', 'cards'));
+  const [dir, setDir] = useState<SortDir>(() => pref('bong.jsort', 'asc'));
+  const [kind, setKind] = useState<TimelineKind | null>(null);
+
+  const changeView = (v: JView) => (setView(v), savePref('bong.jview', v));
+  const changeDir = (d: SortDir) => (setDir(d), savePref('bong.jsort', d));
+
   const list = useMemo(
     () =>
-      [...doc.timelines].sort((a, b) => {
-        const sa = journeyStatus(a);
-        const sb = journeyStatus(b);
-        if (sa.key !== sb.key) return order[sa.key] - order[sb.key];
-        return sa.key === 'done' ? b.startDate.localeCompare(a.startDate) : a.startDate.localeCompare(b.startDate);
-      }),
-    [doc.timelines],
+      sortJourneys(
+        doc.timelines.filter((t) => !kind || t.kind === kind),
+        dir,
+      ),
+    [doc.timelines, kind, dir],
   );
+  const usedKinds = KIND_KEYS.filter((k) => doc.timelines.some((t) => t.kind === k));
+
+  // chia nhóm theo năm của ngày đi
+  const groups = useMemo(() => {
+    const map = new Map<string, Timeline[]>();
+    for (const t of list) {
+      const y = t.startDate ? t.startDate.slice(0, 4) : 'Một ngày nào đó';
+      if (!map.has(y)) map.set(y, []);
+      map.get(y)!.push(t);
+    }
+    return [...map.entries()];
+  }, [list]);
 
   return (
     <section>
@@ -50,69 +92,128 @@ export function Journeys({ onOpen, onCreate }: { onOpen: (t: Timeline) => void; 
         <Ornament />
         <h2 className="section-title">Hành trình</h2>
         <p className="section-sub">Mỗi chuyến đi, mỗi kế hoạch là một dòng thời gian riêng</p>
+        <div className="segmented">
+          {(
+            [
+              ['cards', 'Các hành trình'],
+              ['overview', 'Tổng quan'],
+            ] as const
+          ).map(([k, label]) => (
+            <button key={k} className={view === k ? 'is-on' : ''} onClick={() => changeView(k)}>
+              {view === k && <motion.span layoutId="jseg" className="segmented__pill" />}
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="journeys">
-        <motion.button className="journey journey--new" onClick={onCreate} whileHover={{ y: -6 }} whileTap={{ scale: 0.98 }}>
-          <span className="journey__plus">
-            <IconPlus size={30} />
-          </span>
-          <b>Bắt đầu hành trình mới</b>
-          <small>Chuyến đi, kế hoạch, dự định…</small>
-        </motion.button>
+      {doc.timelines.length > 0 && (
+        <div className="jtools">
+          <div className="filters__chips">
+            {view === 'cards' && usedKinds.length > 1 && (
+              <>
+                <button className={`chip chip--filter ${!kind ? 'is-on' : ''}`} onClick={() => setKind(null)}>
+                  Tất cả
+                </button>
+                {usedKinds.map((k) => (
+                  <button
+                    key={k}
+                    className={`chip chip--filter ${kind === k ? 'is-on' : ''}`}
+                    onClick={() => setKind(kind === k ? null : k)}
+                  >
+                    {KINDS[k].emoji} {KINDS[k].label}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+          <button className="chip chip--filter jtools__sort" onClick={() => changeDir(dir === 'asc' ? 'desc' : 'asc')} title="Đổi thứ tự">
+            {dir === 'asc' ? '↓ Ngày đi: sớm → muộn' : '↑ Ngày đi: muộn → sớm'}
+          </button>
+        </div>
+      )}
 
-        {list.map((t, i) => {
-          const st = journeyStatus(t);
-          const count = doc.memories.filter((m) => m.timelineId === t.id).length;
-          const done = t.checklist.filter((c) => c.done).length;
-          return (
-            <motion.button
-              key={t.id}
-              className={`journey is-${st.key}`}
-              onClick={() => onOpen(t)}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: (i % 3) * 0.08, ease: [0.16, 1, 0.3, 1] }}
-              whileHover={{ y: -6 }}
-            >
-              <Cover t={t} className="journey__cover" />
-              <span className={`journey__status st-${st.key}`}>
-                {st.label} {st.key !== 'dream' && <small>{st.detail}</small>}
+      {view === 'overview' ? (
+        doc.timelines.length ? (
+          <JourneyOverview dir={dir} onOpen={onOpen} onOpenMemory={onOpenMemory} />
+        ) : (
+          <p className="notes__empty">Chưa có hành trình nào để xem tổng quan.</p>
+        )
+      ) : (
+        <>
+          <div className="journeys journeys--new">
+            <motion.button className="journey journey--new" onClick={onCreate} whileHover={{ y: -6 }} whileTap={{ scale: 0.98 }}>
+              <span className="journey__plus">
+                <IconPlus size={30} />
               </span>
-              <span className="journey__body">
-                <span className="journey__kind">
-                  {KINDS[t.kind].emoji} {KINDS[t.kind].label}
-                </span>
-                <b className="journey__title">
-                  {t.emoji} {t.title}
-                </b>
-                <span className="journey__meta">
-                  {t.location && (
-                    <span>
-                      <IconPin size={13} /> {t.location}
-                    </span>
-                  )}
-                  {dateRange(t) && <span>{dateRange(t)}</span>}
-                </span>
-                <span className="journey__foot">
-                  <span>{count} kỉ niệm</span>
-                  {t.checklist.length > 0 && (
-                    <span className="journey__progress">
-                      <span className="journey__track">
-                        <i style={{ width: `${(done / t.checklist.length) * 100}%` }} />
-                      </span>
-                      <em>
-                        {done}/{t.checklist.length}
-                      </em>
-                    </span>
-                  )}
-                </span>
-              </span>
+              <b>Bắt đầu hành trình mới</b>
+              <small>Chuyến đi, kế hoạch, dự định…</small>
             </motion.button>
-          );
-        })}
-      </div>
+          </div>
+          {groups.map(([year, items]) => (
+            <Fragment key={year}>
+              <div className="jyear">
+                <span>{year}</span>
+                <small>{items.length} hành trình</small>
+              </div>
+              <div className="journeys">
+                {items.map((t, i) => {
+                  const st = journeyStatus(t);
+                  const count = doc.memories.filter((m) => m.timelineId === t.id).length;
+                  const done = t.checklist.filter((c) => c.done).length;
+                  return (
+                    <motion.button
+                      key={t.id}
+                      className={`journey is-${st.key}`}
+                      onClick={() => onOpen(t)}
+                      initial={{ opacity: 0, y: 40 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.8, delay: (i % 3) * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                      whileHover={{ y: -6 }}
+                    >
+                      <Cover t={t} className="journey__cover" />
+                      <span className={`journey__status st-${st.key}`}>
+                        {st.label} {st.key !== 'dream' && <small>{st.detail}</small>}
+                      </span>
+                      <span className="journey__body">
+                        <span className="journey__kind">
+                          {KINDS[t.kind].emoji} {KINDS[t.kind].label}
+                        </span>
+                        <b className="journey__title">
+                          {t.emoji} {t.title}
+                        </b>
+                        <span className="journey__meta">
+                          {t.location && (
+                            <span>
+                              <IconPin size={13} /> {t.location}
+                            </span>
+                          )}
+                          {dateRange(t) && <span>{dateRange(t)}</span>}
+                          {durationDays(t) > 1 && <span>{durationDays(t)} ngày</span>}
+                        </span>
+                        <span className="journey__foot">
+                          <span>{count} kỉ niệm</span>
+                          {t.checklist.length > 0 && (
+                            <span className="journey__progress">
+                              <span className="journey__track">
+                                <i style={{ width: `${(done / t.checklist.length) * 100}%` }} />
+                              </span>
+                              <em>
+                                {done}/{t.checklist.length}
+                              </em>
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </Fragment>
+          ))}
+        </>
+      )}
     </section>
   );
 }
@@ -173,7 +274,10 @@ export function JourneyEditor({
   const addItems = (texts: string[]) =>
     setT((x) => ({
       ...x,
-      checklist: [...x.checklist, ...texts.filter((s) => !x.checklist.some((c) => c.text === s)).map((text) => ({ id: uid(), text, done: false }))],
+      checklist: [
+        ...x.checklist,
+        ...texts.filter((s) => !x.checklist.some((c) => c.text === s)).map((text) => ({ id: uid(), text, done: false })),
+      ],
     }));
 
   const setCover = async (f: File) => {
@@ -226,7 +330,9 @@ export function JourneyEditor({
             className="editor__title"
             value={t.title}
             onChange={(e) => set('title', e.target.value)}
-            placeholder={t.kind === 'trip' ? 'Đà Lạt mùa hoa dã quỳ…' : t.kind === 'plan' ? 'Kế hoạch dọn về chung nhà…' : 'Đặt tên cho hành trình…'}
+            placeholder={
+              t.kind === 'trip' ? 'Đà Lạt mùa hoa dã quỳ…' : t.kind === 'plan' ? 'Kế hoạch dọn về chung nhà…' : 'Đặt tên cho hành trình…'
+            }
             autoFocus={!initial}
             maxLength={80}
           />
@@ -299,7 +405,13 @@ export function JourneyEditor({
                 </button>
               )}
             </div>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => (e.target.files?.[0] && setCover(e.target.files[0]), (e.target.value = ''))} />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => (e.target.files?.[0] && setCover(e.target.files[0]), (e.target.value = ''))}
+            />
           </div>
         </div>
 
@@ -310,7 +422,16 @@ export function JourneyEditor({
               {t.checklist.map((c) => (
                 <li key={c.id}>
                   <span>{c.text}</span>
-                  <button type="button" onClick={() => set('checklist', t.checklist.filter((x) => x.id !== c.id))} aria-label="Bỏ">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      set(
+                        'checklist',
+                        t.checklist.filter((x) => x.id !== c.id),
+                      )
+                    }
+                    aria-label="Bỏ"
+                  >
                     <IconClose size={13} />
                   </button>
                 </li>
@@ -412,7 +533,12 @@ export function JourneyView({
             </button>
           </div>
         </div>
-        <motion.div className="jview__head" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}>
+        <motion.div
+          className="jview__head"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        >
           <span className="eyebrow">
             {KINDS[t.kind].emoji} {KINDS[t.kind].label}
           </span>
@@ -458,7 +584,14 @@ export function JourneyView({
           <ul className="checklist">
             <AnimatePresence initial={false}>
               {t.checklist.map((c) => (
-                <motion.li key={c.id} layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className={c.done ? 'is-done' : ''}>
+                <motion.li
+                  key={c.id}
+                  layout
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className={c.done ? 'is-done' : ''}
+                >
                   <button
                     className="checklist__box"
                     onClick={() => updateList(t.checklist.map((x) => (x.id === c.id ? { ...x, done: !x.done } : x)))}
