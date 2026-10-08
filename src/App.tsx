@@ -165,7 +165,7 @@ function App() {
                   onAddMemory={(d) => create(d)}
                 />
               ) : (
-                <Journeys onOpen={openJourney} onCreate={() => setJourneyEditing({ open: true, t: null })} />
+                <Journeys onOpen={openJourney} onCreate={() => setJourneyEditing({ open: true, t: null })} onOpenMemory={setViewing} />
               ))}
             {view === 'moments' && <Moments onCamera={() => setCamera(true)} onPhoto={openPhotos} onToMemory={momentToMemory} />}
             {view === 'notes' && <NotesWall />}
