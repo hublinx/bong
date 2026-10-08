@@ -2,7 +2,7 @@
   "name": "bong",
   "private": true,
   "version": "1.0.0",
-  "description": "Kỉ niệm của tôi và Bông — timeline lưu giữ những khoảnh khắc, hình ảnh và ghi chú.",
+  "description": "Kỉ niệm của Hùng và Linh — timeline lưu giữ những khoảnh khắc, hình ảnh và ghi chú.",
   "type": "module",
   "scripts": {
     "dev": "vite",

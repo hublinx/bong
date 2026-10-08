@@ -107,9 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     setError('');
     try {
-      const doc = emptyDoc();
-      doc.settings.myName = session.profile.givenName;
-      ready(session.profile, await createSpace(doc));
+      ready(session.profile, await createSpace(emptyDoc()));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Không tạo được không gian trên Drive');
     } finally {

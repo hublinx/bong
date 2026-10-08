@@ -26,8 +26,8 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
     try {
       await saveSettings({
         ...s,
-        myName: s.myName.trim() || 'Tôi',
-        partnerName: s.partnerName.trim() || 'Bông',
+        myName: s.myName.trim() || 'Hùng',
+        partnerName: s.partnerName.trim() || 'Linh',
         tagline: s.tagline.trim(),
       });
       toast('Đã lưu cài đặt');
@@ -45,7 +45,7 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
     }
     setInviting(true);
     try {
-      await backend.invite(em, `${profile.givenName} mời bạn vào cuốn nhật kí "Tôi & Bông" ♡ Mở app và đăng nhập bằng email này nhé.`);
+      await backend.invite(em, `${profile.givenName} mời bạn vào cuốn nhật kí "Hùng & Linh" ♡ Mở app và đăng nhập bằng email này nhé.`);
       toast(`Đã mời ${em} ✨`);
       setEmail('');
       backend.members?.().then(setMembers).catch(() => {});
@@ -158,7 +158,7 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
                     invite();
                   }
                 }}
-                placeholder="bong@gmail.com"
+                placeholder="linh@gmail.com"
               />
               <button type="button" className="btn btn--gold btn--sm" onClick={invite} disabled={inviting || !email.trim()}>
                 {inviting ? 'Đang mời…' : 'Gửi lời mời'}

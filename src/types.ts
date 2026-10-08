@@ -102,6 +102,8 @@ export interface Settings {
   /** YYYY-MM-DD — ngày bắt đầu */
   startDate: string;
   tagline: string;
+  /** Đã chuyển tên mặc định cũ (Tôi & Bông) sang Hùng & Linh */
+  namesV2?: boolean;
 }
 
 export interface Doc {
@@ -118,8 +120,9 @@ export interface Doc {
 export const MAIN_TIMELINE = 'main';
 
 export const DEFAULT_SETTINGS: Settings = {
-  myName: 'Tôi',
-  partnerName: 'Bông',
+  myName: 'Hùng',
+  partnerName: 'Linh',
+  namesV2: true,
   startDate: '',
   tagline: 'Mỗi ngày bên nhau là một trang kỉ niệm',
 };
@@ -137,13 +140,25 @@ export function emptyDoc(): Doc {
   };
 }
 
+/** Tên mặc định của bản cũ là "Tôi" & "Bông" — đổi một lần sang Hùng & Linh. */
+function migrateNames(s: Settings): Settings {
+  if (s.namesV2) return s;
+  return {
+    ...s,
+    myName: !s.myName || s.myName === 'Tôi' ? 'Hùng' : s.myName,
+    partnerName: !s.partnerName || s.partnerName === 'Bông' ? 'Linh' : s.partnerName,
+    namesV2: true,
+  };
+}
+
 /** Chuẩn hoá dữ liệu đọc về (thiếu trường, bản cũ…) */
 export function normalizeDoc(raw: unknown): Doc {
   const d = (raw && typeof raw === 'object' ? raw : {}) as Partial<Doc>;
   const base = emptyDoc();
   return {
     version: 2,
-    settings: { ...base.settings, ...(d.settings ?? {}) },
+    // dữ liệu cũ không có cờ namesV2 thì cần đổi tên
+    settings: migrateNames({ ...base.settings, namesV2: false, ...(d.settings ?? {}) }),
     timelines: (d.timelines ?? []).map((t) => ({ ...t, checklist: t.checklist ?? [] })),
     memories: (d.memories ?? []).map((m) => ({ ...m, timelineId: m.timelineId || MAIN_TIMELINE, tags: m.tags ?? [], photoIds: m.photoIds ?? [] })),
     notes: (d.notes ?? []).map((n) => ({

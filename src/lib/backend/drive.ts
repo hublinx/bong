@@ -9,7 +9,7 @@ const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER = 'application/vnd.google-apps.folder';
 
 export const DATA_FILE = 'bong-data.json';
-const SPACE_NAME = 'Tôi & Bông ♡';
+const SPACE_NAME = 'Hùng & Linh ♡';
 const FOLDER_NAMES: Record<PhotoFolder, string> = { memories: 'Ảnh kỉ niệm', moments: 'Khoảnh khắc' };
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
@@ -82,7 +82,7 @@ export async function createSpace(initial: Doc = emptyDoc()): Promise<SpaceCandi
   const folderId = await createFolder(SPACE_NAME);
   await Promise.all([createFolder(FOLDER_NAMES.memories, folderId), createFolder(FOLDER_NAMES.moments, folderId)]);
   const m = multipart(
-    { name: DATA_FILE, parents: [folderId], mimeType: 'application/json', description: 'Dữ liệu của app Tôi & Bông — đừng xoá nhé' },
+    { name: DATA_FILE, parents: [folderId], mimeType: 'application/json', description: 'Dữ liệu của app Hùng & Linh — đừng xoá nhé' },
     new Blob([JSON.stringify(initial)], { type: 'application/json' }),
   );
   const f = await json<{ id: string }>(`${UPLOAD}/files?uploadType=multipart&fields=id`, { method: 'POST', ...m });

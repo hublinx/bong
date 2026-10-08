@@ -39,7 +39,7 @@ export interface SpaceMember {
 
 export interface Backend {
   kind: 'local' | 'drive';
-  /** Tên hiển thị của nơi lưu, vd "Google Drive · Tôi & Bông ♡" */
+  /** Tên hiển thị của nơi lưu, vd "Google Drive · Hùng & Linh ♡" */
   label: string;
   folderUrl?: string;
   loadDoc(): Promise<Doc>;

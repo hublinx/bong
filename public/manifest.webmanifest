@@ -1,7 +1,7 @@
 {
-  "name": "Tôi & Bông",
-  "short_name": "Bông",
-  "description": "Nơi lưu giữ những kỉ niệm của tôi và Bông.",
+  "name": "Hùng & Linh",
+  "short_name": "H & L",
+  "description": "Nơi lưu giữ những kỉ niệm của Hùng và Linh.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
