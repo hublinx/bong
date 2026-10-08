@@ -7,6 +7,8 @@ import { uid } from '../lib/id';
 import { processImage } from '../lib/image';
 import { CHECKLIST_TEMPLATES, durationDays, journeyStatus, KIND_KEYS, KINDS, sortJourneys, type SortDir } from '../lib/journeys';
 import { JourneyOverview } from './JourneyOverview';
+import { JourneyAlbum } from './JourneyAlbum';
+import { driveFolderUrl, parseDriveFolderId } from '../lib/drivelink';
 import { IconCheck, IconChevron, IconClose, IconDrive, IconEdit, IconImage, IconPin, IconPlus, IconSparkle, IconTrash } from './Icons';
 import { LibraryPicker } from './LibraryPicker';
 import { PhotoImg } from './PhotoImg';
@@ -248,9 +250,10 @@ export function JourneyEditor({
   onClose: () => void;
   onSaved?: (t: Timeline) => void;
 }) {
-  const { saveTimeline, upload, me } = useData();
+  const { saveTimeline, upload, me, backend } = useData();
   const { toast } = useUI();
   const [t, setT] = useState<Timeline>(() => blank('trip'));
+  const [folderLink, setFolderLink] = useState('');
   const [item, setItem] = useState('');
   const [busy, setBusy] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -259,6 +262,7 @@ export function JourneyEditor({
   useEffect(() => {
     if (!open) return;
     setT(initial ? structuredClone(initial) : { ...blank('trip'), by: me });
+    setFolderLink(initial?.driveFolderId ? driveFolderUrl(initial.driveFolderId) : '');
     setItem('');
   }, [open, initial]);
 
@@ -414,6 +418,27 @@ export function JourneyEditor({
             />
           </div>
         </div>
+
+        {backend.kind === 'drive' && (
+          <label className="field">
+            <span className="field__label">Thư mục ảnh trên Google Drive (tuỳ chọn)</span>
+            <input
+              value={folderLink}
+              onChange={(e) => {
+                setFolderLink(e.target.value);
+                set('driveFolderId', parseDriveFolderId(e.target.value) ?? undefined);
+              }}
+              placeholder="Dán link thư mục, vd. https://drive.google.com/drive/folders/…"
+            />
+            <small className={`field__hint ${folderLink.trim() && !t.driveFolderId ? 'is-bad' : ''}`}>
+              {!folderLink.trim()
+                ? 'App sẽ tự lấy ảnh trong thư mục (kể cả thư mục con) và xếp theo từng ngày chụp.'
+                : t.driveFolderId
+                  ? '✓ Đã nhận thư mục — ảnh sẽ hiện trong trang hành trình.'
+                  : 'Link chưa đúng — cần link của một thư mục Google Drive.'}
+            </small>
+          </label>
+        )}
 
         <div className="field">
           <span className="field__label">Việc cần làm / đồ cần mang</span>
@@ -621,6 +646,8 @@ export function JourneyView({
             />
           </div>
         </div>
+
+        <JourneyAlbum journey={t} onPhoto={onPhoto} onAddMemory={onAddMemory} />
 
         <div className="section-head jview__tlhead">
           <Ornament />

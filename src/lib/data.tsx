@@ -19,6 +19,8 @@ interface DataCtx {
   library: LibraryPhoto[] | null;
   refreshLibrary: () => Promise<void>;
   upload: (p: ProcessedPhoto, folder: PhotoFolder) => Promise<PhotoMeta>;
+  /** Cho biết kích thước của ảnh lấy từ nơi khác (vd. thư mục Drive của hành trình) */
+  registerPhotos: (metas: PhotoMeta[]) => void;
   saveMemory: (m: Memory, removedPhotoIds?: string[]) => Promise<void>;
   deleteMemory: (id: string) => Promise<void>;
   toggleFavorite: (id: string) => Promise<void>;
@@ -172,6 +174,10 @@ export function DataProvider({
     [backend],
   );
 
+  const registerPhotos = useCallback((metas: PhotoMeta[]) => {
+    for (const m of metas) if (!uploaded.current.has(m.id)) uploaded.current.set(m.id, m);
+  }, []);
+
   const value = useMemo<DataCtx>(() => {
     const metaFor = (id: string): PhotoMeta | undefined => {
       const up = uploaded.current.get(id);
@@ -198,6 +204,7 @@ export function DataProvider({
       library,
       refreshLibrary,
       upload,
+      registerPhotos,
       reload,
 
       async saveMemory(m, removed = []) {
@@ -295,7 +302,7 @@ export function DataProvider({
         });
       },
     };
-  }, [ready, loadError, doc, backend, me, profile, sync, library, refreshLibrary, upload, reload, commit]);
+  }, [ready, loadError, doc, backend, me, profile, sync, library, refreshLibrary, upload, registerPhotos, reload, commit]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

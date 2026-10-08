@@ -19,7 +19,7 @@ export function PhotoImg({
   const [loaded, setLoaded] = useState<string | null>(null);
   return (
     <div className={`photo ${loaded === url && url ? 'is-loaded' : ''} ${onClick ? 'is-clickable' : ''} ${className}`} onClick={onClick}>
-      {url && <img src={url} alt={alt} draggable={false} referrerPolicy="no-referrer" onLoad={() => setLoaded(url)} onError={onError} />}
+      {url && <img src={url} alt={alt} loading="lazy" draggable={false} referrerPolicy="no-referrer" onLoad={() => setLoaded(url)} onError={onError} />}
     </div>
   );
 }

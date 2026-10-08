@@ -2,7 +2,7 @@ import { emptyDoc, normalizeDoc, type Doc, type PhotoMeta } from '../../types';
 import { gfetch, HttpError } from '../google';
 import { blobs } from '../idb';
 import type { ProcessedPhoto } from '../image';
-import type { Backend, LibraryPhoto, PhotoFolder, PhotoSize, SpaceMember } from './types';
+import type { Backend, FolderAlbum, FolderPhoto, LibraryPhoto, PhotoFolder, PhotoSize, SpaceMember } from './types';
 
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
@@ -26,6 +26,14 @@ function multipart(meta: object, body: Blob) {
       `\r\n--${b}--`,
     ]),
   };
+}
+
+/** "2024:09:20 10:11:12" (EXIF) → timestamp theo giờ máy */
+function exifTime(s?: string) {
+  const m = s && /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(s);
+  if (!m) return undefined;
+  const t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime();
+  return Number.isNaN(t) ? undefined : t;
 }
 
 export interface SpaceCandidate {
@@ -277,6 +285,78 @@ export class DriveBackend implements Backend {
       pageToken = r.nextPageToken ?? '';
     } while (pageToken);
     return out;
+  }
+
+  async listFolder(folderId: string): Promise<FolderAlbum> {
+    let root: { name: string; mimeType: string };
+    try {
+      root = await json(`${API}/files/${folderId}?fields=name,mimeType&supportsAllDrives=true`);
+    } catch (e) {
+      if (e instanceof HttpError && (e.status === 404 || e.status === 403))
+        throw new Error('Không mở được thư mục này — có thể tài khoản của bạn chưa được chia sẻ quyền xem.');
+      throw e;
+    }
+    if (root.mimeType !== FOLDER) throw new Error('Link này không phải một thư mục Google Drive.');
+
+    const photos: FolderPhoto[] = [];
+    // duyệt cả thư mục con (vd. "Ngày 1", "Ngày 2"), giới hạn để không chạy mãi
+    const queue = [folderId];
+    let visited = 0;
+    while (queue.length && visited < 60) {
+      const batch = queue.splice(0, 10);
+      visited += batch.length;
+      let pageToken = '';
+      do {
+        const r = await json<{
+          nextPageToken?: string;
+          files: {
+            id: string;
+            name: string;
+            mimeType: string;
+            thumbnailLink?: string;
+            createdTime: string;
+            imageMediaMetadata?: { width?: number; height?: number; rotation?: number; time?: string };
+          }[];
+        }>(
+          `${API}/files?` +
+            new URLSearchParams({
+              q: `(${batch.map((id) => `'${id}' in parents`).join(' or ')}) and (mimeType contains 'image/' or mimeType = '${FOLDER}') and trashed = false`,
+              fields: 'nextPageToken,files(id,name,mimeType,thumbnailLink,createdTime,imageMediaMetadata(width,height,rotation,time))',
+              pageSize: '1000',
+              includeItemsFromAllDrives: 'true',
+              supportsAllDrives: 'true',
+              ...(pageToken ? { pageToken } : {}),
+            }),
+        );
+        for (const f of r.files) {
+          if (f.mimeType === FOLDER) {
+            queue.push(f.id);
+            continue;
+          }
+          this.remember(f.id, f.thumbnailLink);
+          const md = f.imageMediaMetadata ?? {};
+          const rotated = md.rotation === 1 || md.rotation === 3;
+          photos.push({
+            id: f.id,
+            name: f.name,
+            width: (rotated ? md.height : md.width) ?? 4,
+            height: (rotated ? md.width : md.height) ?? 3,
+            takenAt: exifTime(md.time) ?? Date.parse(f.createdTime),
+          });
+        }
+        pageToken = r.nextPageToken ?? '';
+      } while (pageToken);
+    }
+    photos.sort((a, b) => a.takenAt - b.takenAt);
+    return { name: root.name, url: `https://drive.google.com/drive/folders/${folderId}`, photos };
+  }
+
+  async shareWith(fileId: string, email: string) {
+    await gfetch(`${API}/files/${fileId}/permissions?sendNotificationEmail=false&supportsAllDrives=true`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'user', role: 'reader', emailAddress: email }),
+    });
   }
 
   async members(): Promise<SpaceMember[]> {

@@ -52,6 +52,8 @@ export interface Timeline {
   endDate: string;
   location: string;
   coverPhotoId?: string;
+  /** Thư mục Google Drive gắn với hành trình — app tự lấy ảnh trong đó */
+  driveFolderId?: string;
   checklist: ChecklistItem[];
   by?: Author;
   createdAt: number;
