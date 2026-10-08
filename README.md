@@ -12,6 +12,8 @@ Một cuốn nhật kí kỉ niệm nhỏ, sang trọng, dành riêng cho hai ng
   - Có ngày đi/về, đếm ngược ngày khởi hành, trạng thái *đang diễn ra* hoặc *đã đi qua*.
   - Checklist việc cần làm, có gợi ý sẵn cho chuyến đi.
   - Thêm được các điểm đến *dự kiến* trước khi đi.
+  - Gắn được **link một thư mục Google Drive** vào hành trình: app tự lấy ảnh trong đó (kể cả thư mục con), xếp theo ngày chụp ("Ngày 1, Ngày 2…"). Chọn vài ảnh để tạo kỉ niệm hoặc đặt làm ảnh bìa, và chia sẻ thư mục cho người ấy chỉ bằng một nút bấm.
+  - Sắp xếp theo ngày đi/về, chia nhóm theo năm, và có trang **Tổng quan**: bản đồ thời gian nằm ngang cùng dòng thời gian tổng.
 - **Khoảnh khắc (kiểu Locket)**: mở camera chụp ngay trong app, khung vuông, đổi camera trước/sau, flash màn hình, thêm lời nhắn, gửi cho người ấy. Người kia thả cảm xúc 😍, chạm đúp để thả tim, và lưu được khoảnh khắc thành kỉ niệm.
 - **Kho ảnh**: toàn bộ ảnh trong thư mục Drive xếp dạng masonry. Bấm vào ảnh để xem toàn màn hình, vuốt để chuyển ảnh.
 - **Lời nhắn**: bức tường giấy nhớ viết tay, ghim lời nhắn quan trọng.

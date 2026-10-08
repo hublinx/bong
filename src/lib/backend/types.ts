@@ -4,6 +4,22 @@ import type { ProcessedPhoto } from '../image';
 export type PhotoSize = 'thumb' | 'full';
 export type PhotoFolder = 'memories' | 'moments';
 
+/** Ảnh lấy từ một thư mục Drive bất kỳ (vd. album của một hành trình). */
+export interface FolderPhoto {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  /** Lúc chụp (EXIF) nếu có, không thì lúc tải lên Drive */
+  takenAt: number;
+}
+
+export interface FolderAlbum {
+  name: string;
+  url: string;
+  photos: FolderPhoto[];
+}
+
 /** Ảnh trong kho (Drive: mọi ảnh trong thư mục chung, kể cả ảnh tự thả vào bằng app Drive). */
 export interface LibraryPhoto {
   id: string;
@@ -37,5 +53,9 @@ export interface Backend {
   deletePhotos(ids: string[]): Promise<void>;
   listLibrary(): Promise<LibraryPhoto[]>;
   members?(): Promise<SpaceMember[]>;
+  /** Liệt kê ảnh trong một thư mục Drive (kể cả thư mục con). */
+  listFolder?(folderId: string): Promise<FolderAlbum>;
+  /** Chia sẻ một file/thư mục cho email (quyền xem). */
+  shareWith?(fileId: string, email: string): Promise<void>;
   invite?(email: string, message: string): Promise<void>;
 }
